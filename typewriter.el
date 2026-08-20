@@ -5,7 +5,7 @@
 ;; Author: Enrico Flor <enrico@eflor.net>
 ;; Maintainer: Enrico Flor <enrico@eflor.net>
 ;; URL: https://github.com/enricoflor/typewriter-mode
-;; Version: 0.0.1
+;; Version: 0.1.0
 ;; Keywords: convenience
 
 ;; Package-Requires: ((emacs "30.1"))
@@ -37,7 +37,10 @@
 ;; the lack of editing facilities fosters a state of concentration and
 ;; focus that makes certain types of creative writing more satisfying.
 ;;
-;; The package has five configuration options:
+;; The package has seven configuration options:
+;;
+;;   - typewriter-silent: If non-nil, suppress all typewriter bell
+;;     sounds.
 ;;
 ;;   - typewriter-preserve-undo-history: If t, you'll be able to undo
 ;;     edits if you intentionally leave typewriter-mode.  That action
@@ -52,12 +55,22 @@
 ;;     a physical 'ding' will sound this many characters before the
 ;;     margin to warn you that the carriage is about to jam.
 ;;
-;;   - typewriter-tab-width: Self explanatory.
-;;
 ;;   - typewriter-show-chars-remaining: If this and
-;;     typewriter-fill-column are non nil, the modeline will display
+;;     typewriter-fill-column are non-nil, the modeline will display
 ;;     how many characters are left in the current line until the fill
 ;;     column (the margin) is reached.
+;;
+;;   - typewriter-modeline-format: Format string for the modeline
+;;     indicator of remaining characters.  Default is " [%d]".
+;;
+;;   - typewriter-tab-width: Self explanatory.
+;;
+;; There are two hooks available for the user to customize the typing
+;; experience, no function is added to them by default:
+;;
+;;   - typewriter-keystroke-hook
+;;
+;;   - typewriter-carriage-return-hook
 ;;
 ;; Although no systematic test has been carried out, this package's
 ;; minimality should ensure its compatibility with packages that
@@ -74,8 +87,13 @@
                    "https://github.com/enricoflor/typewriter-mode")
   :group 'convenience)
 
+(defcustom typewriter-silent nil
+  "If non-nil, suppress all typewriter bell sounds."
+  :type 'boolean
+  :group 'typewriter)
+
 (defcustom typewriter-preserve-undo-history t
-  "If non nil, keep tracking undo history while in `typewriter-mode'.
+  "If non-nil, keep tracking undo history while in `typewriter-mode'.
 
 You still cannot undo while the mode is active (buffer will be in
 `read-only-mode'), but the history will be fully available after you
@@ -100,11 +118,20 @@ margin is enforced."
   :group 'typewriter)
 
 (defcustom typewriter-show-chars-remaining t
-  "If non nil, show columns remaining before the margin in the mode line.
+  "If non-nil, show columns remaining before the margin in the mode line.
 
 Has no effect unless `typewriter-fill-column' is also set to an integer,
 since without a margin there is nothing to count down to."
   :type 'boolean
+  :group 'typewriter)
+
+(defcustom typewriter-modeline-format " [%d]"
+  "Format string for the modeline character counter.
+
+This is passed directly to `format'.  The `%d' construct will be
+replaced by the number of remaining characters.  Include a leading space
+to visually separate the counter from preceding items in the modeline."
+  :type 'string
   :group 'typewriter)
 
 (defcustom typewriter-tab-width 8
@@ -112,24 +139,35 @@ since without a margin there is nothing to count down to."
   :type 'integer
   :group 'typewriter)
 
+(defcustom typewriter-keystroke-hook nil
+  "Hook run after successfully striking a key (inserting a character)."
+  :type 'hook
+  :group 'typewriter)
+
+(defcustom typewriter-carriage-return-hook nil
+  "Hook run after inserting a new line."
+  :type 'hook
+  :group 'typewriter)
+
 (defun typewriter--ding ()
   "Force a raw audio beep."
-  (let ((ring-bell-function nil)
-        (visible-bell nil))
-    (ding)))
+  (unless typewriter-silent
+    (let ((ring-bell-function nil)
+          (visible-bell nil))
+      (ding))))
 
 (defun typewriter--modeline-remaining ()
-  "Return a mode-line string with columns left before the margin.
+  "Return a modeline string with columns left before the margin.
 
 Returns the empty string outside `typewriter-mode', or when
 `typewriter-show-chars-remaining' or `typewriter-fill-column' is nil."
   (if (and (derived-mode-p 'typewriter-mode)
            typewriter-show-chars-remaining
            typewriter-fill-column)
-      (let ((curr (save-excursion
-                    (end-of-line)
-                    (current-column))))
-        (format " [%d]" (max 0 (- typewriter-fill-column curr))))
+      (let ((curr (save-excursion (end-of-line)
+                                  (current-column))))
+        (format typewriter-modeline-format
+                (max 0 (- typewriter-fill-column curr))))
     ""))
 
 (defun typewriter-backward-char ()
@@ -216,9 +254,13 @@ when point is `typewriter-warning-bell-offset' columns short of
         (setq-local inhibit-read-only t))))))
 
 (defun typewriter--post-command ()
-  "Restore the read-only shield after the keystroke."
+  "Restore the read-only shield after the keystroke, run hooks."
   (when (local-variable-p 'inhibit-read-only)
     (kill-local-variable 'inhibit-read-only))
+  (cond ((eq this-command 'self-insert-command)
+         (run-hooks 'typewriter-keystroke-hook))
+        ((eq this-command 'newline)
+         (run-hooks 'typewriter-carriage-return-hook)))
   (when (and typewriter-fill-column
              typewriter-show-chars-remaining)
     (force-mode-line-update)))
