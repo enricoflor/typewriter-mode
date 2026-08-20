@@ -1,0 +1,37 @@
+#+TITLE: typewriter-mode: turn Emacs into a Text Adder
+#+AUTHOR: Enrico Flor
+
+This package provides a small major mode called ~typewriter-mode~.
+Based on ~fundamental-mode~, it deliberately handicaps Emacs to an
+extreme degree in order to provide something as close as possible to
+the strict forward-only typewriter experience.  Some find that the
+lack of editing facilities fosters a state of concentration and focus
+that makes certain types of creative writing more satisfying.
+
+The package has five configuration options:
+
+  - ~typewriter-preserve-undo-history~: if ~t~, you'll be able to undo
+    edits if you intentionally leave ~typewriter-mode~.  That action in
+    itself requires confirmation and activates ~text-mode~.
+
+  - ~typewriter-fill-column~: if ~nil~, your lines will be as long as
+    you want.  Set to any integer =N=, emacs-turned-to-typewriter
+    refuses to type anything once you reach column =N= until you
+    press =RET= to open a new line.
+
+  - ~typewriter-warning-bell-offset~: If your fill column is set, a
+    physical /ding/ will sound this many characters before the margin to
+    warn you that the carriage is about to jam.
+
+  - ~typewriter-tab-width~: self explanatory.
+
+  - ~typewriter-show-chars-remaining~: If this and
+    ~typewriter-fill-column~ are non nil, the modeline will display how
+    many characters are left in the current line until the fill column
+    (the margin) is reached.
+
+Although no systematic test has been carried out, this package's
+minimalism should ensure its compatibility with packages that change
+the layout of text in the window, such as the fairly popular [[https://github.com/rnkn/olivetti][olivetti]],
+or any configuration that (for instance) hides or alters element of
+the emacs interface.
